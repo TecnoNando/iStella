@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "284461780920",
+    "project_id": "istellacd",
+    "storage_bucket": "istellacd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:284461780920:android:144908daf3f493bb56c94d",
+        "android_client_info": {
+          "package_name": "com.stellamaris.istella"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCaOuD_2tGEYyMt5NBWCXtlxaIdlOUt_o4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

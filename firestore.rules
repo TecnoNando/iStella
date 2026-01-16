@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Función helper para verificar si el usuario es admin
+    function isAdmin() {
+      return request.auth != null && 
+             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin';
+    }
+    
+    // Función helper para verificar autenticación
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Socios: Todos pueden leer, solo admins pueden escribir
+    match /socios/{socioId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Asistencias: Todos los usuarios autenticados pueden leer y escribir
+    match /asistencias/{asistenciaId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Grupos: Todos pueden leer, solo admins pueden escribir
+    match /grupos/{grupoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Usuarios: Todos pueden leer, solo admins pueden escribir
+    match /usuarios/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Configuración: Todos pueden leer, solo admins pueden escribir
+    match /configuracion/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}
