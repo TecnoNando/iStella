@@ -9,20 +9,27 @@ class StorageService {
   /// Subir foto de perfil
   Future<String> uploadProfilePhoto(File imageFile, String userId) async {
     try {
+      print('📸 Iniciando subida de foto para usuario: $userId');
       // Comprimir imagen antes de subir
       final compressedFile = await _compressImage(imageFile);
+      print('📦 Imagen comprimida lista: ${compressedFile.path}');
 
       // Referencia al archivo en Storage
       final ref = _storage.ref().child('profile_photos/$userId.jpg');
+      print('📍 Referencia de Storage: ${ref.fullPath}');
 
       // Subir archivo
+      print('⬆️ Subiendo archivo...');
       final uploadTask = await ref.putFile(
         compressedFile,
         SettableMetadata(contentType: 'image/jpeg'),
       );
+      print('✅ Subida completada. Estado: ${uploadTask.state}');
 
       // Obtener URL de descarga
+      print('🔗 Obteniendo URL de descarga...');
       final downloadUrl = await uploadTask.ref.getDownloadURL();
+      print('🔗 URL obtenida: $downloadUrl');
 
       // Limpiar archivo temporal
       if (await compressedFile.exists()) {
@@ -31,7 +38,7 @@ class StorageService {
 
       return downloadUrl;
     } catch (e) {
-      print('Error uploading profile photo: $e');
+      print('❌ Error CRÍTICO en uploadProfilePhoto: $e');
       rethrow;
     }
   }

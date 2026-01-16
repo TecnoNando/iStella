@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/usuario.dart';
 import '../widgets/profile_photo_widget.dart';
 import '../utils/constants.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   final Usuario usuario;
@@ -18,9 +19,11 @@ class ProfileScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () {
-              // TODO: Implementar edición de perfil
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Edición de perfil próximamente')),
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditProfileScreen(usuario: usuario),
+                ),
               );
             },
           ),

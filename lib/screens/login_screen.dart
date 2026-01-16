@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/update_service.dart';
 import '../utils/constants.dart';
@@ -18,12 +19,23 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _rememberMe = false;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
+    _loadSavedCredentials();
     _checkForUpdates();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _usuarioController.text = prefs.getString('saved_user') ?? '';
+      _passwordController.text = prefs.getString('saved_password') ?? '';
+      _rememberMe = _usuarioController.text.isNotEmpty;
+    });
   }
 
   Future<void> _checkForUpdates() async {
@@ -60,6 +72,16 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
 
+      // Guardar credenciales si se seleccionó
+      final prefs = await SharedPreferences.getInstance();
+      if (_rememberMe) {
+        await prefs.setString('saved_user', _usuarioController.text.trim());
+        await prefs.setString('saved_password', _passwordController.text);
+      } else {
+        await prefs.remove('saved_user');
+        await prefs.remove('saved_password');
+      }
+
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -71,6 +93,111 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _showForgotPasswordDialog(BuildContext context) async {
+    final emailController = TextEditingController();
+    // Pre-llenar si el usuario puso algo en el campo de usuario que parezca un email
+    if (_usuarioController.text.contains('@')) {
+      emailController.text = _usuarioController.text;
+    }
+
+    return showDialog(
+      context: context,
+      builder: (context) {
+        bool isLoading = false;
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Recuperar Contraseña'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Introduce tu correo electrónico para recibir un enlace de reestablecimiento.',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      labelText: 'Correo Electrónico',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email_outlined),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          if (emailController.text.trim().isEmpty ||
+                              !emailController.text.contains('@')) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Introduce un correo válido'),
+                              ),
+                            );
+                            return;
+                          }
+
+                          setStateDialog(() => isLoading = true);
+                          try {
+                            await context
+                                .read<AuthService>()
+                                .sendPasswordResetEmail(
+                                  emailController.text.trim(),
+                                );
+                            if (mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    '¡Correo enviado! Revisa tu bandeja de entrada.',
+                                  ),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setStateDialog(() => isLoading = false);
+                            if (mounted) {
+                              // Mensaje amigable si no encuentra el usuario (probable si usan Firestore Auth)
+                              String msg = 'Error al enviar el correo.';
+                              if (e.toString().contains('user-not-found')) {
+                                msg =
+                                    'Correo no registrado en el sistema de recuperación. Contacta a soporte.';
+                              }
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(msg),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Enviar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -242,6 +369,24 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           const SizedBox(height: 24),
 
+                          // Checkbox recordar sesión
+                          Row(
+                            children: [
+                              Checkbox(
+                                value: _rememberMe,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _rememberMe = value ?? false;
+                                  });
+                                },
+                                activeColor: AppColors.primary,
+                              ),
+                              const Text('Recordar usuario'),
+                            ],
+                          ),
+
+                          const SizedBox(height: 16),
+
                           // Botón de login
                           ElevatedButton(
                             onPressed: _isLoading ? null : _handleLogin,
@@ -272,6 +417,42 @@ class _LoginScreenState extends State<LoginScreen> {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Opciones de recuperación
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              TextButton(
+                                onPressed: () =>
+                                    _showForgotPasswordDialog(context),
+                                child: const Text('¿Olvidaste tu contraseña?'),
+                              ),
+                              const Text(
+                                '|',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  try {
+                                    await context
+                                        .read<AuthService>()
+                                        .sendSupportEmail();
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(content: Text('Error: $e')),
+                                      );
+                                    }
+                                  }
+                                },
+                                child: const Text('Soporte'),
+                              ),
+                            ],
                           ),
                         ],
                       ),

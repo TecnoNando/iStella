@@ -1,52 +1,25 @@
-# Script de Despliegue Automático COMPLETO - iStella
-# Sube APK a GitHub Releases y actualiza Firebase Remote Config automáticamente
+# Script de Despliegue Automatico COMPLETO - iStella
+# Version con API de GitHub (sin necesidad de gh CLI)
 
 param(
     [string]$VersionType = "patch",
-    [string]$Message = "Nueva versión disponible",
-    [bool]$ForceUpdate = $false
+    [string]$Message = "Nueva version disponible",
+    [bool]$ForceUpdate = $false,
+    [string]$GitHubToken = $env:GITHUB_TOKEN
 )
 
-Write-Host "🚀 Iniciando despliegue automático COMPLETO de iStella..." -ForegroundColor Green
+Write-Host "Iniciando despliegue automatico de iStella..." -ForegroundColor Green
 Write-Host ""
 
-# Verificar dependencias
-Write-Host "🔍 Verificando dependencias..." -ForegroundColor Cyan
-
-# Verificar Git
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    Write-Host "❌ Git no está instalado. Instálalo desde: https://git-scm.com" -ForegroundColor Red
-    exit 1
+# Verificar token de GitHub
+$SkipRelease = $false
+if (-not $GitHubToken) {
+    Write-Host "ADVERTENCIA: Token de GitHub no configurado. Se omitirá la creación del Release en GitHub." -ForegroundColor Yellow
+    $SkipRelease = $true
 }
 
-# Verificar GitHub CLI
-if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-    Write-Host "⚠️  GitHub CLI no está instalado." -ForegroundColor Yellow
-    Write-Host "   Instalando GitHub CLI..." -ForegroundColor Cyan
-    winget install --id GitHub.cli -e --silent
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "❌ Error instalando GitHub CLI" -ForegroundColor Red
-        Write-Host "   Instálalo manualmente: https://cli.github.com" -ForegroundColor Yellow
-        exit 1
-    }
-}
-
-# Verificar Firebase CLI
-if (-not (Get-Command firebase -ErrorAction SilentlyContinue)) {
-    Write-Host "⚠️  Firebase CLI no está instalado." -ForegroundColor Yellow
-    Write-Host "   Instalando Firebase CLI..." -ForegroundColor Cyan
-    npm install -g firebase-tools
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "❌ Error instalando Firebase CLI" -ForegroundColor Red
-        exit 1
-    }
-}
-
-Write-Host "   ✅ Todas las dependencias instaladas" -ForegroundColor Green
-
-# 1. Leer versión actual
-Write-Host ""
-Write-Host "📖 Leyendo versión actual..." -ForegroundColor Cyan
+# 1. Leer version actual
+Write-Host "Leyendo version actual..." -ForegroundColor Cyan
 $pubspecPath = "pubspec.yaml"
 $pubspecContent = Get-Content $pubspecPath -Raw
 
@@ -57,16 +30,16 @@ if ($pubspecContent -match 'version:\s*(\d+)\.(\d+)\.(\d+)\+(\d+)') {
     $build = [int]$matches[4]
     
     $currentVersion = "$major.$minor.$patch"
-    Write-Host "   Versión actual: $currentVersion+$build" -ForegroundColor Yellow
+    Write-Host "   Version actual: $currentVersion+$build" -ForegroundColor Yellow
 }
 else {
-    Write-Host "❌ Error: No se pudo leer la versión" -ForegroundColor Red
+    Write-Host "ERROR: No se pudo leer la version" -ForegroundColor Red
     exit 1
 }
 
-# 2. Incrementar versión
+# 2. Incrementar version
 Write-Host ""
-Write-Host "⬆️  Incrementando versión..." -ForegroundColor Cyan
+Write-Host "Incrementando version..." -ForegroundColor Cyan
 
 $newBuild = $build + 1
 
@@ -79,7 +52,7 @@ switch ($VersionType) {
 $newVersion = "$major.$minor.$patch"
 $newVersionFull = "$newVersion+$newBuild"
 
-Write-Host "   Nueva versión: $newVersionFull" -ForegroundColor Green
+Write-Host "   Nueva version: $newVersionFull" -ForegroundColor Green
 
 # Actualizar pubspec.yaml
 $pubspecContent = $pubspecContent -replace "version:\s*\d+\.\d+\.\d+\+\d+", "version: $newVersionFull"
@@ -87,116 +60,127 @@ Set-Content -Path $pubspecPath -Value $pubspecContent -NoNewline
 
 # 3. Compilar APK Release
 Write-Host ""
-Write-Host "🔨 Compilando APK Release..." -ForegroundColor Cyan
+Write-Host "Compilando APK Release..." -ForegroundColor Cyan
 Write-Host "   (Esto puede tomar varios minutos...)" -ForegroundColor Yellow
 
-flutter build apk --release | Out-Null
+flutter build apk --release
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "   ✅ APK compilado exitosamente" -ForegroundColor Green
+    Write-Host "   APK compilado exitosamente" -ForegroundColor Green
     $apkPath = "build\app\outputs\flutter-apk\app-release.apk"
     $apkSize = (Get-Item $apkPath).Length / 1MB
-    Write-Host "   📦 Tamaño: $([math]::Round($apkSize, 2)) MB" -ForegroundColor Yellow
+    Write-Host "   Tamano: $([math]::Round($apkSize, 2)) MB" -ForegroundColor Yellow
 }
 else {
-    Write-Host "   ❌ Error al compilar APK" -ForegroundColor Red
+    Write-Host "   ERROR al compilar APK" -ForegroundColor Red
     exit 1
 }
 
-# 4. Crear release en GitHub
+# 4. Commit y push
 Write-Host ""
-Write-Host "📤 Subiendo a GitHub Releases..." -ForegroundColor Cyan
+Write-Host "Subiendo cambios a GitHub..." -ForegroundColor Cyan
 
-# Verificar si hay un repositorio Git
-if (-not (Test-Path ".git")) {
-    Write-Host "   ⚠️  No hay repositorio Git. Inicializando..." -ForegroundColor Yellow
-    git init
-    git add .
-    git commit -m "Initial commit - v$newVersion"
-    
-    Write-Host "   📝 Crea un repositorio en GitHub y ejecuta:" -ForegroundColor Yellow
-    Write-Host "      git remote add origin https://github.com/TU_USUARIO/iStella.git" -ForegroundColor White
-    Write-Host "      git push -u origin main" -ForegroundColor White
-    Write-Host ""
-    Write-Host "   Luego vuelve a ejecutar este script." -ForegroundColor Yellow
-    exit 0
-}
-
-# Commit de cambios
 git add pubspec.yaml
-git commit -m "chore: bump version to $newVersion" -ErrorAction SilentlyContinue
-
-# Crear tag
+git commit -m "chore: bump version to $newVersion"
 git tag -a "v$newVersion" -m "$Message"
+git push origin main --tags
 
-# Push
-git push origin main --tags 2>&1 | Out-Null
+# 5. Crear release en GitHub usando API
+if ($SkipRelease) {
+    Write-Host "Saltando creación de release en GitHub (Token no configurado)..." -ForegroundColor Yellow
+}
+else {
+    Write-Host ""
+    Write-Host "Creando release en GitHub..." -ForegroundColor Cyan
 
-# Crear release en GitHub con el APK
-Write-Host "   Creando release v$newVersion..." -ForegroundColor Cyan
-
-$releaseNotes = @"
+    $releaseBody = @"
 # iStella v$newVersion
 
-## 📝 Cambios
+## Cambios
 
 $Message
 
-## 📥 Instalación
+## Instalacion
 
 1. Descarga el APK adjunto
-2. Permite instalación de fuentes desconocidas en tu dispositivo
+2. Permite instalacion de fuentes desconocidas
 3. Instala el APK
 
-## ⚙️ Configuración
+## Configuracion
 
-- Tipo de actualización: $(if ($ForceUpdate) { "**FORZADA** ⚠️" } else { "Opcional ℹ️" })
+- Tipo: $(if ($ForceUpdate) { "FORZADA" } else { "Opcional" })
 - Build: $newBuild
-
----
-*Generado automáticamente*
 "@
 
-# Crear release
-gh release create "v$newVersion" `
-    $apkPath `
-    --title "iStella v$newVersion" `
-    --notes $releaseNotes `
-    2>&1 | Out-Null
+    # Crear release
+    $releaseData = @{
+        tag_name   = "v$newVersion"
+        name       = "iStella v$newVersion"
+        body       = $releaseBody
+        draft      = $false
+        prerelease = $false
+    } | ConvertTo-Json
 
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "   ✅ Release creado en GitHub" -ForegroundColor Green
+    $headers = @{
+        "Authorization"        = "Bearer $GitHubToken"
+        "Accept"               = "application/vnd.github+json"
+        "X-GitHub-Api-Version" = "2022-11-28"
+    }
+
+    try {
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/TecnoNando/iStella/releases" `
+            -Method Post `
+            -Headers $headers `
+            -Body $releaseData `
+            -ContentType "application/json"
     
-    # Obtener URL del APK
-    $releaseInfo = gh release view "v$newVersion" --json assets | ConvertFrom-Json
-    $apkUrl = $releaseInfo.assets[0].url
+        Write-Host "   Release creado: $($release.html_url)" -ForegroundColor Green
     
-    Write-Host "   🔗 URL del APK: $apkUrl" -ForegroundColor Yellow
-}
-else {
-    Write-Host "   ❌ Error creando release" -ForegroundColor Red
-    Write-Host "   Asegúrate de estar autenticado: gh auth login" -ForegroundColor Yellow
-    exit 1
+        # Subir APK al release
+        Write-Host "   Subiendo APK..." -ForegroundColor Cyan
+    
+        $uploadUrl = $release.upload_url -replace '\{\?name,label\}', "?name=app-release.apk"
+    
+        $apkBytes = [System.IO.File]::ReadAllBytes((Resolve-Path $apkPath))
+    
+        $uploadHeaders = @{
+            "Authorization" = "Bearer $GitHubToken"
+            "Accept"        = "application/vnd.github+json"
+            "Content-Type"  = "application/vnd.android.package-archive"
+        }
+    
+        $asset = Invoke-RestMethod -Uri $uploadUrl `
+            -Method Post `
+            -Headers $uploadHeaders `
+            -Body $apkBytes
+    
+        $apkUrl = $asset.browser_download_url
+        Write-Host "   APK subido: $apkUrl" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "   ERROR creando release: $_" -ForegroundColor Red
+        Write-Host "   Verifica tu token de GitHub" -ForegroundColor Yellow
+        exit 1
+    }
 }
 
-# 5. Actualizar Firebase Remote Config
+# 6. Actualizar Firebase Remote Config
 Write-Host ""
-Write-Host "🔧 Actualizando Firebase Remote Config..." -ForegroundColor Cyan
+Write-Host "Actualizando Firebase Remote Config..." -ForegroundColor Cyan
 
-# Crear archivo JSON temporal con la configuración
 $remoteConfigJson = @{
     parameters = @{
         latest_version = @{
             defaultValue = @{ value = $newVersion }
-            description  = "Última versión disponible de la app"
+            description  = "Ultima version disponible"
         }
         min_version    = @{
             defaultValue = @{ value = $(if ($ForceUpdate) { $newVersion } else { $currentVersion }) }
-            description  = "Versión mínima requerida"
+            description  = "Version minima requerida"
         }
         force_update   = @{
             defaultValue = @{ value = $ForceUpdate.ToString().ToLower() }
-            description  = "Si la actualización es obligatoria"
+            description  = "Si la actualizacion es obligatoria"
         }
         update_url     = @{
             defaultValue = @{ value = $apkUrl }
@@ -204,38 +188,39 @@ $remoteConfigJson = @{
         }
         update_message = @{
             defaultValue = @{ value = $Message }
-            description  = "Mensaje de actualización"
+            description  = "Mensaje de actualizacion"
         }
     }
 } | ConvertTo-Json -Depth 10
 
-$configPath = "remote-config-temp.json"
+$configPath = "remote-config.json"
 Set-Content -Path $configPath -Value $remoteConfigJson
 
-# Actualizar Remote Config
-firebase remoteconfig:set $configPath --project istellacd 2>&1 | Out-Null
+Write-Host "   Configuracion guardada en: $configPath" -ForegroundColor Yellow
+
+# Desplegar usando firebase deploy (que lee remoteconfig de firebase.json)
+Write-Host "   Desplegando a Firebase..." -ForegroundColor Cyan
+firebase deploy --only remoteconfig
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "   ✅ Remote Config actualizado" -ForegroundColor Green
-    Remove-Item $configPath
+    Write-Host "   Remote Config actualizado exitosamente" -ForegroundColor Green
 }
 else {
-    Write-Host "   ⚠️  Error actualizando Remote Config" -ForegroundColor Yellow
-    Write-Host "   Asegúrate de estar autenticado: firebase login" -ForegroundColor Yellow
-    Write-Host "   Configuración guardada en: $configPath" -ForegroundColor Yellow
+    Write-Host "   ERROR actualizando Remote Config" -ForegroundColor Yellow
+    Write-Host "   Intenta correr: firebase deploy --only remoteconfig" -ForegroundColor Yellow
 }
 
-# 6. Resumen final
+# Resumen
 Write-Host ""
-Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Green
-Write-Host "✅ DESPLIEGUE COMPLETADO AUTOMÁTICAMENTE" -ForegroundColor Green
-Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
+Write-Host "DESPLIEGUE COMPLETADO" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "📊 Resumen:" -ForegroundColor Cyan
-Write-Host "   Versión:          $newVersionFull" -ForegroundColor Green
-Write-Host "   GitHub Release:   https://github.com/TU_USUARIO/iStella/releases/tag/v$newVersion" -ForegroundColor Yellow
-Write-Host "   APK URL:          $apkUrl" -ForegroundColor Yellow
-Write-Host "   Actualización:    $(if ($ForceUpdate) { 'FORZADA ⚠️' } else { 'Opcional ℹ️' })" -ForegroundColor $(if ($ForceUpdate) { 'Red' } else { 'Yellow' })
+Write-Host "Version: $newVersionFull" -ForegroundColor Green
+Write-Host "GitHub: https://github.com/TecnoNando/iStella/releases/tag/v$newVersion" -ForegroundColor Yellow
+Write-Host "APK URL: $apkUrl" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "🎉 Los usuarios verán la actualización al abrir la app!" -ForegroundColor Green
+Write-Host "Importa remote-config.json en Firebase Console" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Los usuarios veran la actualizacion al abrir la app!" -ForegroundColor Green
 Write-Host ""

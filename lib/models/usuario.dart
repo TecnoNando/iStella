@@ -59,6 +59,24 @@ class Usuario {
   bool get isAdmin => rol == 'admin';
   bool get isEntrenador => rol == 'entrenador';
 
+  String get rolMostrable {
+    // Custom logic for Fernando
+    if (nombre.toLowerCase().contains('fernando') ||
+        usuario.toLowerCase().contains('fernando') ||
+        (email != null && email!.toLowerCase().contains('fernando'))) {
+      return 'Desarrollador y Administrador';
+    }
+
+    // Priority: Cargo > Role
+    if (cargo != null && cargo!.isNotEmpty) {
+      return cargo!;
+    }
+
+    if (isAdmin) return 'Administrador';
+    if (isEntrenador) return 'Entrenador';
+    return 'Gimnasta';
+  }
+
   bool get tieneEmail => email != null && email!.isNotEmpty;
   bool get tieneFoto => fotoUrl != null && fotoUrl!.isNotEmpty;
 

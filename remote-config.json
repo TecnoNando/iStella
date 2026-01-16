@@ -1,0 +1,34 @@
+{
+    "parameters":  {
+                       "update_message":  {
+                                              "defaultValue":  {
+                                                                   "value":  "UI Overhaul: Nueva Navegación, Dashboard Moderno y Fix Fotos"
+                                                               },
+                                              "description":  "Mensaje de actualizacion"
+                                          },
+                       "force_update":  {
+                                            "defaultValue":  {
+                                                                 "value":  "false"
+                                                             },
+                                            "description":  "Si la actualizacion es obligatoria"
+                                        },
+                       "min_version":  {
+                                           "defaultValue":  {
+                                                                "value":  "1.1.0"
+                                                            },
+                                           "description":  "Version minima requerida"
+                                       },
+                       "update_url":  {
+                                          "defaultValue":  {
+                                                               "value":  null
+                                                           },
+                                          "description":  "URL de descarga del APK"
+                                      },
+                       "latest_version":  {
+                                              "defaultValue":  {
+                                                                   "value":  "1.1.1"
+                                                               },
+                                              "description":  "Ultima version disponible"
+                                          }
+                   }
+}

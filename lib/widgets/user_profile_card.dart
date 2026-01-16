@@ -18,7 +18,7 @@ class UserProfileCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               // Foto de perfil
@@ -31,9 +31,9 @@ class UserProfileCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Buenos días, ${usuario.nombre}',
+                      'Buenos días',
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         color: AppColors.textSecondary,
                       ),
                     ),
@@ -41,10 +41,12 @@ class UserProfileCard extends StatelessWidget {
                     Text(
                       usuario.nombreCompleto,
                       style: const TextStyle(
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Row(
@@ -53,47 +55,33 @@ class UserProfileCard extends StatelessWidget {
                           usuario.isAdmin
                               ? Icons.admin_panel_settings
                               : Icons.sports,
-                          size: 16,
+                          size: 14,
                           color: AppColors.primary,
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          usuario.cargo ??
-                              (usuario.isAdmin
-                                  ? 'Administrador'
-                                  : 'Entrenador'),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
+                        Expanded(
+                          child: Text(
+                            usuario.rolMostrable,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      usuario.institucion ?? 'C.D. Stella Maris',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
                     ),
                   ],
                 ),
               ),
 
-              // Icono de notificaciones
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.notifications_outlined,
-                  color: AppColors.primary,
-                  size: 24,
-                ),
+              // Icono de perfil
+              IconButton(
+                icon: const Icon(Icons.person, color: AppColors.primary),
+                onPressed: onTap,
+                tooltip: 'Ver perfil',
               ),
             ],
           ),

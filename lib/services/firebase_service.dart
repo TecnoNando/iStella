@@ -116,13 +116,14 @@ class FirebaseService {
     }, SetOptions(merge: true));
   }
 
-  // ==================== USUARIOS (ENTRENADORES) ====================
+  // ==================== USUARIOS (GENÉRICO) ====================
 
-  // Obtener todos los entrenadores
-  Stream<List<Usuario>> getEntrenadoresStream() {
+  // Obtener usuarios por rol
+  Stream<List<Usuario>> getUsuariosByRolStream(String rol) {
     return _firestore
         .collection('usuarios')
-        .where('rol', isEqualTo: 'entrenador')
+        .where('rol', isEqualTo: rol)
+        .where('activo', isEqualTo: true)
         .snapshots()
         .map(
           (snapshot) =>
@@ -130,24 +131,36 @@ class FirebaseService {
         );
   }
 
-  // Agregar nuevo entrenador
-  Future<void> addEntrenador(Usuario entrenador) async {
-    await _firestore.collection('usuarios').add(entrenador.toFirestore());
-  }
-
-  // Actualizar entrenador
-  Future<void> updateEntrenador(Usuario entrenador) async {
-    await _firestore
-        .collection('usuarios')
-        .doc(entrenador.id)
-        .update(entrenador.toFirestore());
-  }
-
-  // Eliminar entrenador (soft delete)
-  Future<void> deleteEntrenador(String entrenadorId) async {
-    await _firestore.collection('usuarios').doc(entrenadorId).update({
+  // Eliminar usuario (soft delete)
+  Future<void> deleteUsuario(String usuarioId) async {
+    await _firestore.collection('usuarios').doc(usuarioId).update({
       'activo': false,
     });
+  }
+
+  // ==================== USUARIOS (ENTRENADORES - Legacy wrappers) ====================
+
+  // Obtener todos los entrenadores
+  Stream<List<Usuario>> getEntrenadoresStream() {
+    return getUsuariosByRolStream('entrenador');
+  }
+
+  // Agregar nuevo entrenador (Generic wrapper)
+  Future<void> addEntrenador(Usuario usuario) async {
+    await _firestore.collection('usuarios').add(usuario.toFirestore());
+  }
+
+  // Actualizar entrenador (Generic wrapper)
+  Future<void> updateEntrenador(Usuario usuario) async {
+    await _firestore
+        .collection('usuarios')
+        .doc(usuario.id)
+        .update(usuario.toFirestore());
+  }
+
+  // Eliminar entrenador (Legacy wrapper)
+  Future<void> deleteEntrenador(String entrenadorId) async {
+    await deleteUsuario(entrenadorId);
   }
 
   // ==================== GRUPOS DE ENTRENAMIENTO ====================

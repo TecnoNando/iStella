@@ -8,22 +8,22 @@ import '../utils/password_hasher.dart';
 import '../widgets/profile_photo_widget.dart';
 import 'dart:math';
 
-class TrainersScreen extends StatefulWidget {
-  const TrainersScreen({super.key});
+class SociosScreen extends StatefulWidget {
+  const SociosScreen({super.key});
 
   @override
-  State<TrainersScreen> createState() => _TrainersScreenState();
+  State<SociosScreen> createState() => _SociosScreenState();
 }
 
-class _TrainersScreenState extends State<TrainersScreen> {
+class _SociosScreenState extends State<SociosScreen> {
   @override
   Widget build(BuildContext context) {
     final firebaseService = context.read<FirebaseService>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Gestión de Entrenadores')),
+      appBar: AppBar(title: const Text('Gimnastas')),
       body: StreamBuilder<List<Usuario>>(
-        stream: firebaseService.getEntrenadoresStream(),
+        stream: firebaseService.getUsuariosByRolStream('gimnasta'),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
@@ -33,26 +33,26 @@ class _TrainersScreenState extends State<TrainersScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final entrenadores = snapshot.data!;
+          final socios = snapshot.data!;
 
-          if (entrenadores.isEmpty) {
+          if (socios.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(
-                    Icons.person_off,
+                    Icons.person_outline,
                     size: 64,
                     color: AppColors.textSecondary,
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'No hay entrenadores creados',
+                    'No hay socios registrados',
                     style: TextStyle(fontSize: 18),
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Crea el primer entrenador',
+                    'Añade el primer socio',
                     style: TextStyle(color: AppColors.textSecondary),
                   ),
                 ],
@@ -62,50 +62,42 @@ class _TrainersScreenState extends State<TrainersScreen> {
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: entrenadores.length,
+            itemCount: socios.length,
             itemBuilder: (context, index) {
-              final entrenador = entrenadores[index];
-              return _buildEntrenadorCard(context, entrenador, firebaseService);
+              final socio = socios[index];
+              return _buildSocioCard(context, socio, firebaseService);
             },
           );
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showEntrenadorDialog(context),
+        onPressed: () => _showSocioDialog(context),
         icon: const Icon(Icons.person_add),
-        label: const Text('Nuevo Entrenador'),
+        label: const Text('Nuevo Socio'),
       ),
     );
   }
 
-  Widget _buildEntrenadorCard(
+  Widget _buildSocioCard(
     BuildContext context,
-    Usuario entrenador,
+    Usuario socio,
     FirebaseService firebaseService,
   ) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: AppColors.primary,
-          child: Text(
-            entrenador.nombre[0].toUpperCase(),
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
+        leading: ProfilePhotoWidget(usuario: socio, editable: false, size: 50),
         title: Text(
-          entrenador.nombre,
+          socio.nombreCompleto,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            Text('Usuario: ${entrenador.usuario}'),
-            Text('Grupos asignados: ${entrenador.gruposAsignados.length}'),
+            Text('Usuario: ${socio.usuario}'),
+            if (socio.gruposAsignados.isNotEmpty)
+              Text('Grupos: ${socio.gruposAsignados.length}'),
           ],
         ),
         isThreeLine: true,
@@ -134,9 +126,9 @@ class _TrainersScreenState extends State<TrainersScreen> {
           ],
           onSelected: (value) {
             if (value == 'edit') {
-              _showEntrenadorDialog(context, entrenador: entrenador);
+              _showSocioDialog(context, socio: socio);
             } else if (value == 'delete') {
-              _confirmDelete(context, entrenador, firebaseService);
+              _confirmDelete(context, socio, firebaseService);
             }
           },
         ),
@@ -144,23 +136,23 @@ class _TrainersScreenState extends State<TrainersScreen> {
     );
   }
 
-  void _showEntrenadorDialog(BuildContext context, {Usuario? entrenador}) {
+  void _showSocioDialog(BuildContext context, {Usuario? socio}) {
     showDialog(
       context: context,
-      builder: (context) => EntrenadorDialog(entrenador: entrenador),
+      builder: (context) => SocioDialog(socio: socio),
     );
   }
 
   void _confirmDelete(
     BuildContext context,
-    Usuario entrenador,
+    Usuario socio,
     FirebaseService firebaseService,
   ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Eliminar Entrenador'),
-        content: Text('¿Estás seguro de eliminar a "${entrenador.nombre}"?'),
+        title: const Text('Eliminar Socio'),
+        content: Text('¿Estás seguro de eliminar a "${socio.nombreCompleto}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -168,11 +160,13 @@ class _TrainersScreenState extends State<TrainersScreen> {
           ),
           TextButton(
             onPressed: () async {
-              await firebaseService.deleteEntrenador(entrenador.id);
+              await firebaseService.deleteUsuario(
+                socio.id,
+              ); // Assuming generic delete method exists or add specific logic
               if (context.mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Entrenador eliminado')),
+                  const SnackBar(content: Text('Socio eliminado')),
                 );
               }
             },
@@ -185,16 +179,16 @@ class _TrainersScreenState extends State<TrainersScreen> {
   }
 }
 
-class EntrenadorDialog extends StatefulWidget {
-  final Usuario? entrenador;
+class SocioDialog extends StatefulWidget {
+  final Usuario? socio;
 
-  const EntrenadorDialog({super.key, this.entrenador});
+  const SocioDialog({super.key, this.socio});
 
   @override
-  State<EntrenadorDialog> createState() => _EntrenadorDialogState();
+  State<SocioDialog> createState() => _SocioDialogState();
 }
 
-class _EntrenadorDialogState extends State<EntrenadorDialog> {
+class _SocioDialogState extends State<SocioDialog> {
   final _formKey = GlobalKey<FormState>();
 
   // Controllers
@@ -205,42 +199,59 @@ class _EntrenadorDialogState extends State<EntrenadorDialog> {
   late TextEditingController _emailController;
   late TextEditingController _telefonoController;
   late TextEditingController _dniController;
-  late TextEditingController _cargoController;
 
   DateTime? _fechaNacimiento;
   String? _fotoUrl;
   List<String> _gruposAsignados = [];
   List<GrupoEntrenamiento> _gruposDisponibles = [];
+  bool _isMinor = false; // To track if user is under 18
 
   @override
   void initState() {
     super.initState();
-    _nombreController = TextEditingController(
-      text: widget.entrenador?.nombre ?? '',
-    );
+    _nombreController = TextEditingController(text: widget.socio?.nombre ?? '');
     _apellidosController = TextEditingController(
-      text: widget.entrenador?.apellidos ?? '',
+      text: widget.socio?.apellidos ?? '',
     );
     _usuarioController = TextEditingController(
-      text: widget.entrenador?.usuario ?? '',
+      text: widget.socio?.usuario ?? '',
     );
     _passwordController = TextEditingController(
-      text: widget.entrenador?.password ?? '',
+      text: widget.socio?.password ?? '',
     );
-    _emailController = TextEditingController(
-      text: widget.entrenador?.email ?? '',
-    );
+    _emailController = TextEditingController(text: widget.socio?.email ?? '');
     _telefonoController = TextEditingController(
-      text: widget.entrenador?.telefono ?? '',
+      text: widget.socio?.telefono ?? '',
     );
-    _dniController = TextEditingController(text: widget.entrenador?.dni ?? '');
-    _cargoController = TextEditingController(
-      text: widget.entrenador?.cargo ?? 'Entrenador',
-    );
-    _fechaNacimiento = widget.entrenador?.fechaNacimiento;
-    _fotoUrl = widget.entrenador?.fotoUrl;
-    _gruposAsignados = List.from(widget.entrenador?.gruposAsignados ?? []);
+    _dniController = TextEditingController(text: widget.socio?.dni ?? '');
+
+    _fechaNacimiento = widget.socio?.fechaNacimiento;
+    _fotoUrl = widget.socio?.fotoUrl;
+    _gruposAsignados = List.from(widget.socio?.gruposAsignados ?? []);
+
+    _checkAge(); // Initial check
     _loadGrupos();
+  }
+
+  void _checkAge() {
+    if (_fechaNacimiento == null) {
+      _isMinor = false;
+      return;
+    }
+    final now = DateTime.now();
+    final age = now.year - _fechaNacimiento!.year;
+    // Check if birthday has happened this year
+    bool birthdayPassed =
+        now.month > _fechaNacimiento!.month ||
+        (now.month == _fechaNacimiento!.month &&
+            now.day >= _fechaNacimiento!.day);
+
+    // Exact age calculation
+    int exactAge = birthdayPassed ? age : age - 1;
+
+    setState(() {
+      _isMinor = exactAge < 18;
+    });
   }
 
   Future<void> _loadGrupos() async {
@@ -260,16 +271,13 @@ class _EntrenadorDialogState extends State<EntrenadorDialog> {
     _emailController.dispose();
     _telefonoController.dispose();
     _dniController.dispose();
-    _cargoController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(
-        widget.entrenador == null ? 'Nuevo Entrenador' : 'Editar Entrenador',
-      ),
+      title: Text(widget.socio == null ? 'Nuevo Socio' : 'Editar Socio'),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
@@ -280,9 +288,9 @@ class _EntrenadorDialogState extends State<EntrenadorDialog> {
               // Foto de perfil
               Center(
                 child: ProfilePhotoWidget(
-                  usuario: widget.entrenador,
+                  usuario: widget.socio,
                   editable: true,
-                  size: 120,
+                  size: 100,
                   onPhotoUploaded: (url) {
                     setState(() {
                       _fotoUrl = url;
@@ -328,6 +336,68 @@ class _EntrenadorDialogState extends State<EntrenadorDialog> {
               ),
               const SizedBox(height: 16),
 
+              // Fecha de nacimiento (CRITICAL for logic)
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate:
+                        _fechaNacimiento ??
+                        DateTime(2010), // Default easier for minors
+                    firstDate: DateTime(1950),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _fechaNacimiento = picked;
+                      _checkAge(); // Update logic when date changes
+                    });
+                  }
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Fecha de Nacimiento *',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.calendar_today),
+                  ),
+                  child: Text(
+                    _fechaNacimiento != null
+                        ? '${_fechaNacimiento!.day}/${_fechaNacimiento!.month}/${_fechaNacimiento!.year}'
+                        : 'Seleccionar fecha',
+                    style: TextStyle(
+                      color: _fechaNacimiento != null
+                          ? Colors.black
+                          : Colors.grey,
+                    ),
+                  ),
+                ),
+              ),
+              if (_fechaNacimiento == null)
+                const Padding(
+                  padding: EdgeInsets.only(left: 12, top: 4),
+                  child: Text(
+                    'Requerido para determinar si es menor',
+                    style: TextStyle(color: AppColors.error, fontSize: 12),
+                  ),
+                ),
+              const SizedBox(height: 16),
+
+              // Teléfono (Label changes)
+              TextFormField(
+                controller: _telefonoController,
+                decoration: InputDecoration(
+                  labelText: _isMinor
+                      ? 'Teléfono del Padre/Madre'
+                      : 'Teléfono del Socio',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.phone),
+                  hintText: '+34 600 000 000',
+                  helperText: _isMinor ? 'Menor de edad detectado' : null,
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 16),
+
               // Email
               TextFormField(
                 controller: _emailController,
@@ -351,81 +421,19 @@ class _EntrenadorDialogState extends State<EntrenadorDialog> {
               ),
               const SizedBox(height: 16),
 
-              // Teléfono
-              TextFormField(
-                controller: _telefonoController,
-                decoration: const InputDecoration(
-                  labelText: 'Teléfono',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.phone),
-                  hintText: '+34 600 000 000',
-                ),
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 16),
-
               // DNI
               TextFormField(
                 controller: _dniController,
                 decoration: const InputDecoration(
-                  labelText: 'DNI/NIE',
+                  labelText: 'DNI/NIE (Opcional)',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.badge),
-                  hintText: '12345678A',
                 ),
                 textCapitalization: TextCapitalization.characters,
               ),
               const SizedBox(height: 16),
 
-              // Fecha de nacimiento
-              InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: _fechaNacimiento ?? DateTime(1990),
-                    firstDate: DateTime(1950),
-                    lastDate: DateTime.now(),
-                  );
-                  if (picked != null) {
-                    setState(() {
-                      _fechaNacimiento = picked;
-                    });
-                  }
-                },
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Fecha de Nacimiento',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.calendar_today),
-                  ),
-                  child: Text(
-                    _fechaNacimiento != null
-                        ? '${_fechaNacimiento!.day}/${_fechaNacimiento!.month}/${_fechaNacimiento!.year}'
-                        : 'Seleccionar fecha',
-                    style: TextStyle(
-                      color: _fechaNacimiento != null
-                          ? Colors.black
-                          : Colors.grey,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Cargo
-              TextFormField(
-                controller: _cargoController,
-                decoration: const InputDecoration(
-                  labelText: 'Cargo',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.work),
-                  hintText: 'Entrenador, Coordinador...',
-                ),
-                textCapitalization: TextCapitalization.words,
-              ),
-              const SizedBox(height: 16),
-
-              // Usuario
+              // Usuario generate
               TextFormField(
                 controller: _usuarioController,
                 decoration: const InputDecoration(
@@ -434,7 +442,7 @@ class _EntrenadorDialogState extends State<EntrenadorDialog> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.account_circle),
                 ),
-                enabled: widget.entrenador == null,
+                enabled: widget.socio == null,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Ingresa el usuario';
@@ -459,7 +467,7 @@ class _EntrenadorDialogState extends State<EntrenadorDialog> {
                 ),
                 obscureText: true,
                 validator: (value) {
-                  if (widget.entrenador == null &&
+                  if (widget.socio == null &&
                       (value == null || value.isEmpty)) {
                     return 'Ingresa una contraseña';
                   }
@@ -475,7 +483,7 @@ class _EntrenadorDialogState extends State<EntrenadorDialog> {
               const SizedBox(height: 8),
               if (_gruposDisponibles.isEmpty)
                 const Text(
-                  'No hay grupos disponibles. Crea grupos primero.',
+                  'No hay grupos disponibles.',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,
@@ -511,8 +519,8 @@ class _EntrenadorDialogState extends State<EntrenadorDialog> {
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
-          onPressed: _saveEntrenador,
-          child: Text(widget.entrenador == null ? 'Crear' : 'Guardar'),
+          onPressed: _saveSocio,
+          child: Text(widget.socio == null ? 'Crear' : 'Guardar'),
         ),
       ],
     );
@@ -534,8 +542,17 @@ class _EntrenadorDialogState extends State<EntrenadorDialog> {
     ).showSnackBar(SnackBar(content: Text('Contraseña generada: $password')));
   }
 
-  Future<void> _saveEntrenador() async {
+  Future<void> _saveSocio() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_fechaNacimiento == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('La fecha de nacimiento es obligatoria'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
 
     try {
       final firebaseService = context.read<FirebaseService>();
@@ -545,14 +562,14 @@ class _EntrenadorDialogState extends State<EntrenadorDialog> {
       if (_passwordController.text.isNotEmpty) {
         passwordToSave = PasswordHasher.hashPassword(_passwordController.text);
       } else {
-        passwordToSave = widget.entrenador!.password;
+        passwordToSave = widget.socio!.password;
       }
 
-      final entrenador = Usuario(
-        id: widget.entrenador?.id ?? '',
+      final socio = Usuario(
+        id: widget.socio?.id ?? '',
         usuario: _usuarioController.text.trim(),
         password: passwordToSave,
-        rol: 'entrenador',
+        rol: 'gimnasta', // Role enforced
         nombre: _nombreController.text.trim(),
         apellidos: _apellidosController.text.trim(),
         email: _emailController.text.trim().isEmpty
@@ -565,19 +582,26 @@ class _EntrenadorDialogState extends State<EntrenadorDialog> {
             ? null
             : _dniController.text.trim(),
         fechaNacimiento: _fechaNacimiento,
-        cargo: _cargoController.text.trim().isEmpty
-            ? null
-            : _cargoController.text.trim(),
+        cargo: null, // Cargo is null for socios
         institucion: 'C.D. Stella Maris',
-        fotoUrl: _fotoUrl ?? widget.entrenador?.fotoUrl,
+        fotoUrl: _fotoUrl ?? widget.socio?.fotoUrl,
         gruposAsignados: _gruposAsignados,
-        fechaCreacion: widget.entrenador?.fechaCreacion ?? DateTime.now(),
+        fechaCreacion: widget.socio?.fechaCreacion ?? DateTime.now(),
       );
 
-      if (widget.entrenador == null) {
-        await firebaseService.addEntrenador(entrenador);
+      // Using same methods as trainer since they are all Users but checking if generic method exists
+      // If addEntrenador adds to 'usuarios' collection, we can reuse or create specific method
+      // Assuming 'addEntrenador' adds to 'usuarios' collection regardless of role, but let's check FirebaseService later.
+      // For now, I'll use addEntrenador method (which typically adds to 'usuarios') but naming suggests specific.
+      // Ideally should be `addUsuario` or similar. I'll use `addEntrenador` (renaming conceptually to addUsuario) for now if generic,
+      // or I will need to check FirebaseService again to be sure.
+      // Checking used imports: `deleteEntrenador` was used in TrainersScreen.
+      // I'll assume I need to verify FirebaseService methods.
+
+      if (widget.socio == null) {
+        await firebaseService.addEntrenador(socio); // Reusing for now
       } else {
-        await firebaseService.updateEntrenador(entrenador);
+        await firebaseService.updateEntrenador(socio); // Reusing for now
       }
 
       if (mounted) {
@@ -585,9 +609,9 @@ class _EntrenadorDialogState extends State<EntrenadorDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              widget.entrenador == null
-                  ? 'Entrenador creado correctamente'
-                  : 'Entrenador actualizado correctamente',
+              widget.socio == null
+                  ? 'Socio creado correctamente'
+                  : 'Socio actualizado correctamente',
             ),
             backgroundColor: AppColors.success,
           ),

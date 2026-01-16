@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/usuario.dart';
 import '../utils/password_hasher.dart';
 
@@ -56,7 +58,7 @@ class AuthService extends ChangeNotifier {
   }
 
   // Logout
-  void logout() {
+  Future<void> logout() async {
     _currentUser = null;
     notifyListeners();
   }
@@ -103,5 +105,31 @@ class AuthService extends ChangeNotifier {
     if (_currentUser == null) return false;
     if (_currentUser!.isAdmin) return true;
     return _currentUser!.gruposAsignados.contains(grupoId);
+  }
+
+  // Enviar correo de reestablecimiento de contraseña
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      print('Error al enviar correo de reset: $e');
+      rethrow;
+    }
+  }
+
+  // Abrir correo de soporte
+  Future<void> sendSupportEmail() async {
+    final Uri emailLaunchUri = Uri(
+      scheme: 'mailto',
+      path: 'soporte@istella.com', // TODO: Cambiar por email real
+      query:
+          'subject=Consulta Soporte iStella&body=Hola, necesito ayuda con...',
+    );
+
+    if (await canLaunchUrl(emailLaunchUri)) {
+      await launchUrl(emailLaunchUri);
+    } else {
+      throw Exception('No se pudo abrir la app de correo');
+    }
   }
 }

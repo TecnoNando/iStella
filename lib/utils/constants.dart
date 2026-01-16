@@ -1,17 +1,28 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Colores oficiales del Club Deportivo Stella Maris
-  static const primary = Color(0xFF1B2F5C); // Azul marino Stella Maris
-  static const secondary = Color(0xFFC9A961); // Dorado/Oro del círculo
-  static const accent = Color(0xFF0D1B3E); // Azul oscuro para contraste
-  static const background = Color(0xFFF8F9FA); // Gris muy claro
-  static const surface = Color(0xFFFFFFFF); // Blanco
-  static const textPrimary = Color(0xFF1B2F5C); // Azul marino
-  static const textSecondary = Color(0xFF6C757D); // Gris medio
-  static const success = Color(0xFF28A745); // Verde para "presente"
-  static const error = Color(0xFFDC3545); // Rojo para "ausente"
-  static const warning = Color(0xFFFFC107); // Amarillo para advertencias
+  // Colores estilo iPasen (Verde corporativo y pasteles)
+  static const primary = Color(0xFF00583D); // Verde oscuro corporativo
+  static const secondary = Color(0xFFC8E6C9); // Verde muy claro / pastel
+  static const accent = Color(0xFF1B5E20); // Verde intermedio
+
+  static const background = Color(0xFFF9FAFB); // Blanco roto / Gris muy claro
+  static const cardBackground = Color(0xFFFFFFFF); // Blanco puro
+
+  // Colores de tarjetas
+  static const cardGreenLight = Color(
+    0xFFD1E7DD,
+  ); // Fondo verde pastel (Agenda)
+  static const cardRedLight = Color(0xFFF8D7DA); // Fondo rojo pastel (Alertas)
+  static const cardTextGreen = Color(0xFF0f5132); // Texto verde oscuro
+  static const cardTextRed = Color(0xFF842029); // Texto rojo oscuro
+
+  static const textPrimary = Color(0xFF212529); // Negro suave
+  static const textSecondary = Color(0xFF6C757D); // Gris
+
+  static const success = Color(0xFF198754); // Verde éxito
+  static const error = Color(0xFFDC3545); // Rojo error
+  static const warning = Color(0xFFFFC107); // Amarillo warning
 }
 
 class AppStrings {
